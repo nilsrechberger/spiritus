@@ -7,6 +7,7 @@ rm -fr data/
 
 # Define scope
 years=(
+	2023
 	2024
 )
 
@@ -16,7 +17,7 @@ for year in "${years[@]}"; do
 	aws s3 cp \
 	--no-sign-request \
 	--recursive \
-	s3://openaq-data-archive/records/csv.gz/locationid=2178/year=$year/ \
+	s3://openaq-data-archive/records/csv.gz/locationid=2162162/year=$year/ \
 	data
 	echo "Download data for year $year."
 done
