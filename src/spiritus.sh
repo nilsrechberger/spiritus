@@ -2,9 +2,13 @@
 
 shopt -s globstar
 
+# Remove old data
+rm -r data/
+
 # Define scope
 years=(
 	2024
+	2025
 )
 
 # Request data from AWS and download
