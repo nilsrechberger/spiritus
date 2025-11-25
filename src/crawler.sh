@@ -42,12 +42,14 @@ touch $MERGED_DATA
 
 # Extraxt header
 FIRST_FILE=""
-for file in data/**/*.csv; do
+for file in data/*/*.csv; do
     if [ -f "$file" ]; then
         FIRST_FILE="$file"
-        break  # Stoppe nach der ersten gefundenen Datei
+        break 
     fi
 done
+
+echo "Using header from $FIRST_FILE"
 
 head -n 1 "$FIRST_FILE" > "$MERGED_DATA"
 
