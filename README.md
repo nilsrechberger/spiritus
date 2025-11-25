@@ -1,57 +1,76 @@
-# Spiritus: A openaq data crawler
+# Spiritus: An OpenAQ Data Crawler and Processor
 
-Spiritus is a data crawler & processor based on bash. It crawls data from [openaq](https://openaq.org/) directly from (AWS)[https://openaq-data-archive.s3.amazonaws.com/].
+Spiritus is a **data crawler and processor** implemented entirely in **Bash**. It downloads air quality data directly from the [**OpenAQ**](https://openaq.org/) **Data** on [**AWS**](https://openaq-data-archive.s3.amazonaws.com/).
 
-## Project struckture
+## Project Structure
 
-'''bash
+```bash
 .
-├── README.md
+├── README.md         # This file
 └── src
-    ├── crawler.sh
-    ├── run.sh
-    └── processor.sh
-'''
+    ├── crawler.sh    # Responsible for downloading and merging the data.
+    ├── run.sh        # Executes the complete workflow (Crawling and Processing).
+    └── processor.sh  # Responsible for filtering the merged data.
+```
 
 ## Workflow
 
-Spiritus work in two steps: Download the data from [openaq](https://openaq.org/) directly from (AWS)[https://openaq-data-archive.s3.amazonaws.com/] and process the data by mesurement parameter and locations.
+The Spiritus workflow is divided into two main steps:
 
-### Data Crawler
+1. **Data Crawling**: Downloading the compressed OpenAQ data from the AWS S3 bucket, followed by unpacking and merging it into a single CSV file.
+2. **Data Processing**: Filtering the merged data based on specific measurement parameters and locations (Location IDs).
 
-All data will be saved in a automaticly created data directory. The data scope can be defined by the 'LOCATION_ID' list in 'src/crawler.sh'.
+### 1\. Data Crawler (`src/crawler.sh`)
 
-:::callout{
-# Waring
-This can  download up to 350 files to your system, roughly 1.5 MB of data.
-}
+The crawler performs the following steps:
 
-The data will be downloaded in compemised format but will be unpack automaticaly. In a last step all data will be merged to a single data file (CSV).
+* All downloaded files are automatically saved in a newly created **`data`** directory.
+* The **data scope** (which files to download) can be defined using the **`LOCATION_ID`** list in the **`src/crawler.sh`** file.
+* The data is downloaded in a compressed format but is **automatically unpacked**.
+* In a final step, all unpacked data is merged into a single **CSV data file**.
 
-### Processor
+> **ATTENTION: Data Volume Warning**
+>
+> Depending on the configuration, this process can download **up to 350 files**, occupying roughly **1.5 GB** of data on your system.
 
-The processor filter the data by mesurement parameters and location ID. Both can be defines in list in 'src/processor.sh'.
+### 2\. Processor (`src/processor.sh`)
 
-## Run the Workflow
+The processor filters the merged main CSV file:
 
-Download this repository with 'git' and navigate to the project directory.
+* The filtering is done by **measurement parameters** (e.g., `pm25`, `o3`) and **Location ID**.
+* Both the desired parameters and Location IDs can be defined in the lists located within the **`src/processor.sh`** file.
 
-'''bash
+## Running the Workflow
+
+The complete workflow can be initiated using the **`src/run.sh`** file, which combines and executes both the crawler and the processor sequentially.
+
+1. **Clone the repository and navigate to the project directory:**
+
+<!-- end list -->
+
+```bash
 git clone https://github.com/nilsrechberger/spiritus.git
 cd spiritus
-''' 
+```
 
-The complete workflow can be run by 'src/run.sh' which combines the data crawling and processing in one file.
+2. **Start the complete workflow:**
 
-'''bash
-. src/run.sh
-'''
+<!-- end list -->
 
-### Shortcuts
+```bash
+./src/run.sh
+```
 
-Its not nessecary to run 'src/run.sh' every time after a adjustment. Both files 'src/crawler.sh' and 'src/processor' can be run idenpendatly.
+### Shortcuts for Independent Execution
 
-'''bash
-. src/crawler.sh
-. src/processor.sh
-'''
+It is **not necessary** to execute `src/run.sh` every time after making adjustments. Both the crawler and the processor scripts can be run **independently** when needed. This allows for quick iteration if you only need to re-process data without re-downloading, or vice versa.
+
+To run the components separately:
+
+```bash
+# Execute only the Data Crawler (Downloads, unpacks, and merges data)
+./src/crawler.sh
+
+# Execute only the Processor (Filters existing data)
+./src/processor.sh
+```
