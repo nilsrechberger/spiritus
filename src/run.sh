@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 echo "Start process"
 . src/crawler.sh
