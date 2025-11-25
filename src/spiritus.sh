@@ -6,20 +6,21 @@ shopt -s globstar
 rm -fr data/
 
 # Define scope
-years=(
-	2023
-	2024
+LOCATION_ID=(
+	2162162
+	5735
+	9590
 )
 
 # Request data from AWS and download
 echo "Start Download..."
-for year in "${years[@]}"; do
+for location in "${LOCATION_ID[@]}"; do
 	aws s3 cp \
 	--no-sign-request \
 	--recursive \
-	s3://openaq-data-archive/records/csv.gz/locationid=2162162/year=$year/ \
+	s3://openaq-data-archive/records/csv.gz/locationid=$location/year=2024/ \
 	data
-	echo "Download data for year $year."
+	echo "Download data for location $location."
 done
 echo "Finished download."
 
