@@ -2,7 +2,7 @@
 
 # Read data
 
-MERGED_DATA="data/merged_data.csv"
+MERGED_DATA="data/AQI_data.csv"
 
 # Filter data for parameter
 echo "Start filter data for paramters"
