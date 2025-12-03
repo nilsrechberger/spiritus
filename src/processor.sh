@@ -27,9 +27,15 @@ done
 echo "Start filter data for location ID"
 
 LOCATIONS=(
+	2162162
 	5735
 	9590
-	2162162
+	9589
+	9591
+	9587
+	3732
+	2162150
+	9578
 )
 
 for loc in "${LOCATIONS[@]}"; do 
