@@ -7,9 +7,18 @@ rm -fr data/
 
 # Define scope
 LOCATION_ID=(
+# Lucern
 	2162162
 	5735
 	9590
+# Zurich
+	9589
+	9591
+	9587
+# Geneve
+	3732
+	2162150
+	9578
 )
 
 # Request data from AWS and download
