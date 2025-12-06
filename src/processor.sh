@@ -1,105 +1,162 @@
 #!/bin/bash
 
+# Set errexit
+set -e
+
 MERGED_DATA="data/merged_data.csv"
 AQI_DATA="data/AQI_data.csv"
 
-echo "Calculate AQI in $MERGED_DATA according to EEA standards..."
+# Encode columns
+COL_SENSOR_ID=2
+COL_DATE=4
+COL_PARAM=7
+COL_VAL=9
 
-awk -F, 'BEGIN {OFS=","}
-{
-    # Remove line brake (by windows sys)
-    sub(/\r$/, "", $0)
+echo "Calculating full AQI stats (Hourly, Daily Avg, Daily Category, Worst Case & Driver)..."
+
+awk -F, -v c_sensor="$COL_SENSOR_ID" -v c_date="$COL_DATE" -v c_param="$COL_PARAM" -v c_val="$COL_VAL" '
+BEGIN { OFS="," }
+
+# Define functions
+function clean_string(str) {
+    gsub(/"/, "", str); gsub(/^ +| +$/, "", str)
+    return tolower(str)
 }
 
-# Add new column
-NR==1 { 
-    print $0, "AQI_Category" 
-    next 
-} 
+function get_day(str) {
+    gsub(/"/, "", str)
+    return substr(str, 1, 10) # YYYY-MM-DD
+}
 
-# Select param and value column
-{
-    raw_param = $7
-    raw_val = $9
-    
-    # Normalize data
-    param = raw_param
-    val = raw_val
-    gsub(/"/, "", param)
-    gsub(/^ +| +$/, "", param)
-    param = tolower(param)
-    
-    gsub(/"/, "", val)
-    gsub(/^ +| +$/, "", val)
+function aqi_to_severity(cat) {
+    if (cat == "Good") return 1
+    if (cat == "Fair") return 2
+    if (cat == "Moderate") return 3
+    if (cat == "Poor") return 4
+    if (cat == "Very Poor") return 5
+    if (cat == "Extremely Poor") return 6
+    return 0 
+}
 
-    # Handling missing values
-    val = val + 0
-    
-    cat = "Not defined"
+function severity_to_aqi(sev) {
+    if (sev == 6) return "Extremely Poor"
+    if (sev == 5) return "Very Poor"
+    if (sev == 4) return "Poor"
+    if (sev == 3) return "Moderate"
+    if (sev == 2) return "Fair"
+    if (sev == 1) return "Good"
+    return "N/A"
+}
 
-    # Define AQI
+function get_aqi_category(param, val) {
+    val = val + 0 # Fill missing values
+    
     if (param == "pm25") {
-        if (val <= 10)      cat = "Good"
-        else if (val <= 20) cat = "Fair"
-        else if (val <= 25) cat = "Moderate"
-        else if (val <= 50) cat = "Poor"
-        else if (val <= 75) cat = "Very Poor"
-        else                cat = "Extremely Poor"
+        if (val <= 10) return "Good"; if (val <= 20) return "Fair";
+        if (val <= 25) return "Moderate"; if (val <= 50) return "Poor";
+        if (val <= 75) return "Very Poor"; return "Extremely Poor"
     }
-
-    else if (param == "pm10") {
-        if (val <= 20)       cat = "Good"
-        else if (val <= 35)  cat = "Fair"
-        else if (val <= 50)  cat = "Moderate"
-        else if (val <= 100) cat = "Poor"
-        else if (val <= 200) cat = "Very Poor"
-        else                 cat = "Extremely Poor"
+    if (param == "pm10") {
+        if (val <= 20) return "Good"; if (val <= 35) return "Fair";
+        if (val <= 50) return "Moderate"; if (val <= 100) return "Poor";
+        if (val <= 200) return "Very Poor"; return "Extremely Poor"
     }
-
-    else if (param == "no2") {
-        if (val <= 40)       cat = "Good"
-        else if (val <= 90)  cat = "Fair"
-        else if (val <= 120) cat = "Moderate"
-        else if (val <= 230) cat = "Poor"
-        else if (val <= 340) cat = "Very Poor"
-        else                 cat = "Extremely Poor"
+    if (param == "no2") {
+        if (val <= 40) return "Good"; if (val <= 90) return "Fair";
+        if (val <= 120) return "Moderate"; if (val <= 230) return "Poor";
+        if (val <= 340) return "Very Poor"; return "Extremely Poor"
     }
-
-    else if (param == "o3") {
-        if (val <= 50)       cat = "Good"
-        else if (val <= 100) cat = "Fair"
-        else if (val <= 130) cat = "Moderate"
-        else if (val <= 240) cat = "Poor"
-        else if (val <= 380) cat = "Very Poor"
-        else                 cat = "Extremely Poor"
+    if (param == "o3") {
+        if (val <= 50) return "Good"; if (val <= 100) return "Fair";
+        if (val <= 130) return "Moderate"; if (val <= 240) return "Poor";
+        if (val <= 380) return "Very Poor"; return "Extremely Poor"
     }
-
-    else if (param == "so2") {
-        if (val <= 100)      cat = "Good"
-        else if (val <= 200) cat = "Fair"
-        else if (val <= 350) cat = "Moderate"
-        else if (val <= 500) cat = "Poor"
-        else if (val <= 750) cat = "Very Poor"
-        else                 cat = "Extremely Poor"
+    if (param == "so2") {
+        if (val <= 100) return "Good"; if (val <= 200) return "Fair";
+        if (val <= 350) return "Moderate"; if (val <= 500) return "Poor";
+        if (val <= 750) return "Very Poor"; return "Extremely Poor"
     }
-
-    else if (param == "co") {
-        if (val <= 5)       cat = "Good"
-        else if (val <= 7)  cat = "Fair"
-        else if (val <= 10) cat = "Moderate"
-        else if (val <= 15) cat = "Poor"
-        else if (val <= 20) cat = "Very Poor"
-        else                cat = "Extremely Poor"
+    if (param == "co") {
+        if (val <= 5) return "Good"; if (val <= 7) return "Fair";
+        if (val <= 10) return "Moderate"; if (val <= 15) return "Poor";
+        if (val <= 20) return "Very Poor"; return "Extremely Poor"
     }
+    return "Not defined"
+}
 
-    # Falls der Parameter unbekannt ist, zeigen wir ihn im Fehler an
-    else {
-        cat = "No AQI according to EEA"
+NR==FNR {
+    if (FNR==1) next
+
+    day = get_day($c_date)
+    param = clean_string($c_param)
+    raw_sensor = $c_sensor; gsub(/"/, "", raw_sensor)
+    raw_val = $c_val; gsub(/"/, "", raw_val); val = raw_val + 0
+
+    key = day "_" raw_sensor "_" param
+    
+    sum[key] += val
+    count[key]++
+    next
+}
+
+FNR==1 && NR!=1 {
+    
+    for (key in sum) {
+        split(key, parts, "_")
+        day = parts[1]; sensor = parts[2]; param = parts[3]
+        
+        avg = sum[key] / count[key]
+        
+        final_avg_map[key] = avg
+
+        cat = get_aqi_category(param, avg)
+        sev = aqi_to_severity(cat)
+        
+        group_key = day "_" sensor
+        
+        if (sev > max_sev[group_key]) {
+            max_sev[group_key] = sev
+            worst_driver[group_key] = param
+        }
     }
+}
 
-    # Add aqi category
-    print $0, cat
+{ sub(/\r$/, "", $0) }
 
-}' "$MERGED_DATA" > "$AQI_DATA"
+# Header Update
+FNR==1 { 
+    print $0, "AQI_Category_Hourly", "Daily_Average", "AQI_Category_Daily", "Daily_Worst_AQI_Category", "Worst_Driver_Param"
+    next 
+}
+
+{
+    day = get_day($c_date)
+    param = clean_string($c_param)
+    raw_sensor = $c_sensor; gsub(/"/, "", raw_sensor)
+    raw_val = $c_val; gsub(/"/, "", raw_val); val = raw_val + 0
+
+    key = day "_" raw_sensor "_" param
+    group_key = day "_" raw_sensor
+
+    # Hourly AQI
+    cat_hourly = get_aqi_category(param, val)
+
+    # Daily Average
+    # Wert aus Zwischenschritt holen
+    avg_val = final_avg_map[key]
+    avg_str = sprintf("%.2f", avg_val)
+
+    # Daily AQI
+    cat_daily = get_aqi_category(param, avg_val)
+
+    # Worst Case Overall & Driver
+    worst_sev = max_sev[group_key]
+    worst_cat = severity_to_aqi(worst_sev)
+    driver = worst_driver[group_key]
+
+    print $0, cat_hourly, avg_str, cat_daily, worst_cat, driver
+}
+
+' "$MERGED_DATA" "$MERGED_DATA" > "$AQI_DATA"
 
 echo "Done! Results in $AQI_DATA"
